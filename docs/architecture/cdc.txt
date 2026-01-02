@@ -1,0 +1,30 @@
+Cahier de charge 
+Module 1 : Comptabilité
+Module 2 : Import / Export
+Module 3 : CRM & Prestations de service
+I.	Comptabilité
+A.	Multi-devises (Ariary, USD, EUR…)
+B.	Facturation clients/fournisseurs (proforma, factures, avoirs)
+C.	Suivi des paiements (partiels, échéances)
+D.	Journaux comptables (ventes, achats, banque, caisse)
+E.	États financiers : bilan, compte de résultat, TVA, trésorerie
+F.	Export PDF/Excel 
+II.	 Import / Export
+A.	Gestion des commandes clients/fournisseurs
+B.	Suivi des expéditions (BL, packing list, connaissement, proforma)
+C.	Suivi des coûts logistiques (fret, assurance, douane, transit)
+D.	calcul des marges par opération d’import/export
+III.	CRM & Prestations de service
+A.	Fiches clients/fournisseurs (coordonnées, historique)
+B.	Gestion des devis et contrats de prestation
+C.	Suivi des activités (import/export et services) par client
+D.	Relances et rappels (paiement, contrat, échéance)
+
+
+
+- Exigences techniques
+§	Application web en réseau local (LAN)
+§	Base de données sécurisée (PostgreSQL ou MySQL/MariaDB)
+§	Sauvegardes automatiques régulières
+§	Gestion des rôles (admin, comptable, commercial, etc.)
+§	Accès via navigateur (pas besoin d’installation sur chaque PC)
