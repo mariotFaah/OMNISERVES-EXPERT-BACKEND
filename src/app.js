@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import fs from 'fs';
 
 // Database
 import { testConnection } from './core/database/connection.js';
@@ -18,46 +17,59 @@ import { auth } from './core/middleware/auth.js';
 
 dotenv.config();
 
-// Vérifier les variables d'environnement critiques
+// Vérifier les variables d'environnement critiques (en production sur Vercel)
 const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingEnvVars.length > 0) {
-  console.error('❌ Variables d\'environnement manquantes:', missingEnvVars);
-  console.error('💡 Assurez-vous que le fichier .env est correctement configuré');
-  process.exit(1);
-}
-
-// Vérifier le certificat SSL
-if (process.env.DB_SSL_CA) {
-  try {
-    if (fs.existsSync(process.env.DB_SSL_CA)) {
-      console.log(`✅ Certificat SSL trouvé: ${process.env.DB_SSL_CA}`);
-    } else {
-      console.warn(`⚠️ Certificat SSL non trouvé: ${process.env.DB_SSL_CA}`);
-    }
-  } catch (error) {
-    console.warn('⚠️ Erreur lors de la vérification du certificat:', error.message);
+if (process.env.NODE_ENV === 'production') {
+  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  if (missingEnvVars.length > 0) {
+    console.error('❌ Variables d\'environnement manquantes:', missingEnvVars);
+    // En production, on continue mais on log l'erreur
+    console.error('⚠️  La connexion à la base de données risque d\'échouer');
   }
 }
 
 const app = express();
 
-// Middleware CORS
+// Middleware CORS - configuration pour Vercel
+const allowedOrigins = [
+  'https://omniserves-experts-frontend.vercel.app',
+  'https://omniserves-experts-frontend.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173'
+];
+
 app.use(helmet());
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    // Autoriser les requêtes sans origin (curl, postman, server-side)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.log('CORS bloqué pour:', origin);
+      // En production, on peut être plus strict
+      if (process.env.NODE_ENV === 'production') {
+        callback(new Error('Not allowed by CORS'));
+      } else {
+        callback(null, true); // En dev, on autorise tout
+      }
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// Middleware de logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-  next();
-});
+// Middleware de logging (uniquement en dev pour éviter trop de logs sur Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Route de santé
 app.get('/api/health', async (req, res) => {
@@ -70,13 +82,15 @@ app.get('/api/health', async (req, res) => {
       database: dbStatus ? 'Connected' : 'Disconnected',
       database_type: 'TiDB Cloud',
       environment: process.env.NODE_ENV || 'development',
+      service: 'OMNISERVES EXPERT API',
+      version: '1.0.0',
       modules: ['comptabilite', 'import-export', 'crm', 'auth']  
     });
   } catch (error) {
     res.status(500).json({
       status: 'ERROR',
       message: 'Erreur lors de la vérification de la santé',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -90,9 +104,15 @@ try {
   app.use('/api/comptabilite', auth, comptabiliteRoutes);
   app.use('/api/import-export', auth, importExportRoutes);
   
-  console.log('✅ Modules initialisés avec succès');
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('✅ Modules initialisés avec succès');
+  }
 } catch (error) {
   console.error('❌ Erreur lors de l\'initialisation des modules:', error);
+  // En production, on continue mais on log l'erreur
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Détails de l\'erreur:', error.message);
+  }
 }
 
 // Route de test admin
@@ -132,37 +152,68 @@ app.get('/api/auth/users-test', auth, (req, res) => {
   });
 });
 
+// Route racine
+app.get('/', (req, res) => {
+  res.json({
+    message: 'OMNISERVES EXPERT API',
+    version: '1.0.0',
+    documentation: '/api/health',
+    endpoints: {
+      auth: '/api/auth/login',
+      comptabilite: '/api/comptabilite/factures',
+      crm: '/api/crm/tiers',
+      importExport: '/api/import-export/commandes'
+    },
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Gestion des routes non trouvées
 app.use('/:any*', (req, res) => {
   res.status(404).json({
     success: false,
     message: 'Route non trouvée',
     path: req.originalUrl,
-    method: req.method
+    method: req.method,
+    available_endpoints: ['/', '/api/health', '/api/auth/login', '/api/comptabilite/factures']
   });
 });
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {
-  console.error('❌ Erreur serveur:', err);
+  console.error('❌ Erreur serveur:', err.message);
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Stack:', err.stack);
+  }
+  
   res.status(500).json({
     success: false,
     message: 'Erreur interne du serveur',
-    ...(process.env.NODE_ENV === 'development' && { error: err.message })
+    ...(process.env.NODE_ENV === 'development' && { 
+      error: err.message,
+      stack: err.stack 
+    })
   });
 });
 
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, async () => {
-  console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
-  console.log(`📊 URL: http://localhost:${PORT}`);
-  console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🗄️  Base de données: TiDB Cloud`);
-  console.log(`📁 Database: ${process.env.DB_NAME}`);
+// Démarrage du serveur UNIQUEMENT en développement local
+// Sur Vercel, c'est api/index.js qui sera exécuté
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 3001;
   
-  // Tester la connexion
-  console.log('\n🔌 Test de connexion TiDB...');
-  await testConnection();
-});
+  app.listen(PORT, async () => {
+    console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
+    console.log(`📊 URL: http://localhost:${PORT}`);
+    console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🗄️  Base de données: TiDB Cloud`);
+    console.log(`📁 Database: ${process.env.DB_NAME || 'Not configured'}`);
+    
+    // Tester la connexion
+    console.log('\n🔌 Test de connexion TiDB...');
+    await testConnection();
+  });
+}
+
+// Export pour Vercel (CRITIQUE)
+export default app;
