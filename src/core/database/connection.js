@@ -4,6 +4,7 @@ import knexConfig from '../../../knexfile.js';
 const environment = process.env.NODE_ENV || 'production';
 const config = knexConfig[environment];
 
+// SSL avec Base64 (pour Vercel / Aiven)
 if (process.env.DB_SSL_CA_BASE64) {
   config.connection.ssl = {
     ca: Buffer.from(process.env.DB_SSL_CA_BASE64, 'base64').toString('utf8'),
@@ -19,11 +20,11 @@ export const db = knex(config);
 export const testConnection = async () => {
   try {
     const result = await db.raw('SELECT 1 AS test, NOW() AS time, DATABASE() AS `database`');
-    console.log('✅ Connexion TiDB établie avec succès');
+    console.log('✅ Connexion MySQL/Aiven établie avec succès');
     console.log('📊 Détails:', result[0][0]);
     return true;
   } catch (error) {
-    console.error('❌ Erreur de connexion TiDB:', error.message);
+    console.error('❌ Erreur de connexion MySQL/Aiven:', error.message);
     console.error('🔧 SSL:', config.connection.ssl ? 'OK' : 'ABSENT');
     return false;
   }
