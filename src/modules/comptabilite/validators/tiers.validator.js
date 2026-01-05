@@ -1,3 +1,4 @@
+// src/modules/comptabilite/validators/tiers.validator.js
 import Joi from 'joi';
 
 export const createTiersSchema = Joi.object({
@@ -13,15 +14,14 @@ export const createTiersSchema = Joi.object({
   numero: Joi.string().max(50).allow('').optional().messages({
     'string.max': 'Le numéro ne peut pas dépasser 50 caractères'
   }),
+  siret: Joi.string().max(14).allow('').optional().messages({
+    'string.max': 'Le SIRET ne peut pas dépasser 14 caractères'
+  }),
   adresse: Joi.string().max(500).allow('').optional().messages({
     'string.max': 'L\'adresse ne peut pas dépasser 500 caractères'
   }),
   email: Joi.string()
-    .email({ 
-      tlds: { 
-        allow: false 
-      } 
-    })
+    .email({ tlds: { allow: false } })
     .allow('')
     .optional()
     .messages({
@@ -29,21 +29,11 @@ export const createTiersSchema = Joi.object({
     }),
   telephone: Joi.string().max(20).allow('').optional().messages({
     'string.max': 'Le téléphone ne peut pas dépasser 20 caractères'
-  })
-});
-
-export const updateTiersSchema = Joi.object({
-  nom: Joi.string().min(2).max(255).optional(),
-  type_tiers: Joi.string().valid('client', 'fournisseur').optional(),
-  numero: Joi.string().max(50).allow('').optional(),
-  adresse: Joi.string().max(500).allow('').optional(),
-  email: Joi.string()
-    .email({ 
-      tlds: { 
-        allow: false 
-      } 
-    })
-    .allow('')
-    .optional(),
-  telephone: Joi.string().max(20).allow('').optional()
-}).min(1);
+  }),
+  // Nouvelles colonnes
+  forme_juridique: Joi.string().max(100).allow('').optional(),
+  secteur_activite: Joi.string().max(100).allow('').optional(),
+  categorie: Joi.string().valid('prospect', 'client', 'fournisseur', 'partenaire').optional(),
+  devise_preferee: Joi.string().max(3).default('MGA').optional(),
+  // Ignorez 'reference' qui n'existe pas dans la table
+}).unknown(true); // Permet des champs non définis (comme 'reference')

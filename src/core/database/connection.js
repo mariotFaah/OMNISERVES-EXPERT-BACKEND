@@ -4,54 +4,33 @@ import knexConfig from '../../../knexfile.js';
 const environment = process.env.NODE_ENV || 'production';
 const config = knexConfig[environment];
 
-console.log('🔧 Configuration DB utilisée:', {
-  host: config.connection.host,
-  port: config.connection.port,
-  database: config.connection.database,
-  user: config.connection.user,
-  ssl: config.connection.ssl,
-  vercel: process.env.VERCEL ? 'OUI' : 'NON'
-});
+// Logs détaillés
+console.log('🔧 ========== DATABASE CONFIG ==========');
+console.log('🔧 Environment:', environment);
+console.log('🔧 Host:', config.connection.host);
+console.log('🔧 Database:', config.connection.database);
+console.log('🔧 User:', config.connection.user);
+console.log('🔧 Port:', config.connection.port);
+console.log('🔧 SSL:', config.connection.ssl);
+console.log('🔧 Timeout:', config.connection.connectTimeout);
+console.log('🔧 Vercel:', process.env.VERCEL ? 'YES' : 'NO');
+console.log('🔧 DB_HOST from env:', process.env.DB_HOST);
+console.log('🔧 =====================================');
 
 export const db = knex(config);
 
 export const testConnection = async () => {
   try {
-    const result = await db.raw('SELECT 1 AS test, NOW() AS time, DATABASE() AS `database`, VERSION() as version');
-    console.log('✅ Connexion base de données établie avec succès');
-    console.log('📊 Détails:', {
-      database: result[0][0].database,
-      time: result[0][0].time,
-      version: result[0][0].version,
-      host: config.connection.host,
-      ssl: config.connection.ssl ? 'ACTIVÉ' : 'DÉSACTIVÉ'
-    });
-    return {
-      success: true,
-      data: result[0][0],
-      host: config.connection.host
-    };
+    console.log('🔍 Testing database connection to:', config.connection.host);
+    const result = await db.raw('SELECT 1');
+    console.log('✅ Database connection SUCCESS');
+    return true;
   } catch (error) {
-    console.error('❌ Erreur de connexion base de données:', error.message);
-    console.error('🔧 Configuration complète:', {
-      host: config.connection.host,
-      port: config.connection.port,
-      database: config.connection.database,
-      user: config.connection.user,
-      ssl: config.connection.ssl,
-      env: process.env.NODE_ENV
-    });
-    console.error('🔧 Variables d\'environnement:', {
-      DB_HOST: process.env.DB_HOST,
-      DB_USER: process.env.DB_USER,
-      DB_NAME: process.env.DB_NAME,
-      VERCEL: process.env.VERCEL
-    });
-    return {
-      success: false,
-      error: error.message,
-      host: config.connection.host
-    };
+    console.error('❌ Database connection FAILED:');
+    console.error('   Error:', error.message);
+    console.error('   Code:', error.code);
+    console.error('   Host:', config.connection.host);
+    return false;
   }
 };
 

@@ -5,6 +5,7 @@ import { LigneFactureRepository } from '../repositories/LigneFactureRepository.j
 import { CalculService } from './CalculService.js';
 import { ArticleService } from './ArticleService.js';
 import { PaiementRepository } from '../repositories/PaiementRepository.js';
+import { JournalService } from './JournalService.js'; 
 
 export class FacturationService {
   constructor() {
@@ -15,6 +16,7 @@ export class FacturationService {
     this.calculService = new CalculService();
     this.articleService = new ArticleService();
     this.paiementRepository = new PaiementRepository(); 
+    this.journalService = new JournalService(); 
   }
 
   async verifierStockAvantCreation(factureData) {
@@ -335,6 +337,28 @@ export class FacturationService {
     const factureComplete = await this.factureRepository.findById(numero_facture);
     const lignes = await this.ligneFactureRepository.findByFacture(numero_facture);
     const historiquePaiements = await this.getHistoriquePaiements(numero_facture);
+
+    // ✅ AJOUT IMPORTANT : GÉNÉRER LES ÉCRITURES COMPTABLES
+    // Vérifier si la facture est validée et a un montant positif
+    if (factureData.statut === 'validee' && factureComplete.total_ttc > 0) {
+      try {
+        // Préparer la facture pour le journal (ajouter le nom du tiers)
+        const facturePourJournal = {
+          ...factureComplete,
+          nom_tiers: tiers.nom || 'Tiers inconnu'
+        };
+        
+        // Générer les écritures comptables
+        await this.journalService.genererEcritureFacture(facturePourJournal);
+        console.log(`✅ Écritures comptables générées pour facture ${numero_facture}`);
+      } catch (journalError) {
+        console.error(`❌ Erreur lors de la génération des écritures: ${journalError.message}`);
+        // Ne pas arrêter le processus pour une erreur de journalisation
+        // mais journaliser l'erreur
+      }
+    } else {
+      console.log(`ℹ️  Facture ${numero_facture} non validée ou sans montant, écritures non générées`);
+    }
 
     return {
       ...factureComplete,
