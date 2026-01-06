@@ -1,3 +1,4 @@
+// backend/src/modules/auth/services/UserService.js
 import UserRepository from '../repositories/UserRepository.js';
 import bcrypt from 'bcryptjs';
 
@@ -5,7 +6,6 @@ export class UserService {
   constructor() {
     this.userRepository = new UserRepository();
   }
-
 
   async getAllUsers() {
     return await this.userRepository.findAllWithRoles();
@@ -44,12 +44,12 @@ export class UserService {
     const [userId] = await this.userRepository.createUser(userToCreate);
     
     // Retourner l'utilisateur créé
-    return await this.userRepository.findByIdWithRole(userId);
+    return await this.userRepository.findByIdWithRole(userId, false);
   }
 
   async updateUser(id, userData) {
-    // Vérifier que l'utilisateur existe
-    const existingUser = await this.userRepository.findByIdWithRole(id);
+    // ✅ CORRECTION : Utiliser findByIdWithRole avec includeInactive = true
+    const existingUser = await this.userRepository.findByIdWithRole(id, true);
     if (!existingUser) {
       throw new Error('Utilisateur non trouvé');
     }
@@ -59,6 +59,11 @@ export class UserService {
       prenom: userData.prenom,
       email: userData.email
     };
+
+    // ✅ IMPORTANT : Accepter is_active dans les données de mise à jour
+    if (userData.is_active !== undefined) {
+      updateData.is_active = userData.is_active;
+    }
 
     // Si le rôle est fourni, le mettre à jour
     if (userData.role) {
@@ -77,10 +82,12 @@ export class UserService {
     await this.userRepository.update(id, updateData);
     
     // Retourner l'utilisateur mis à jour
-    return await this.userRepository.findByIdWithRole(id);
+    return await this.userRepository.findByIdWithRole(id, true);
   }
 
   async deactivateUser(id) {
+    // ✅ CORRECTION : Utiliser findByIdWithRole avec includeInactive = false
+    // (on ne peut désactiver que des utilisateurs actifs)
     const existingUser = await this.userRepository.findByIdWithRole(id, false);
     if (!existingUser) {
       throw new Error('Utilisateur non trouvé');
@@ -90,13 +97,14 @@ export class UserService {
   }
 
   async activateUser(id) {
-  const existingUser = await this.userRepository.findByIdWithRole(id, true);
-  if (!existingUser) {
-    throw new Error('Utilisateur non trouvé');
-  }
+    // ✅ CORRECTION : Utiliser findByIdWithRole avec includeInactive = true
+    const existingUser = await this.userRepository.findByIdWithRole(id, true);
+    if (!existingUser) {
+      throw new Error('Utilisateur non trouvé');
+    }
 
-  return await this.userRepository.update(id, { is_active: true });
-}
+    return await this.userRepository.update(id, { is_active: true });
+  }
 
   // Méthode utilitaire pour obtenir l'ID d'un rôle
   async getRoleId(roleCode) {
