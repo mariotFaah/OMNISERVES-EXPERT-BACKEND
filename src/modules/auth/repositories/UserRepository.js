@@ -53,7 +53,7 @@ async findByEmail(email) {
     .where('users.id_user', userId)
     .where('users.is_active', true)
     .first();
-}*/
+}
 
 async findByIdWithRole(userId, includeInactive = false) {
   const query = this.db
@@ -72,6 +72,27 @@ async findByIdWithRole(userId, includeInactive = false) {
   }
   
   return query.first();
+}*/
+async findByIdWithRole(userId, includeInactive = false) {
+  
+  const query = this.db
+    .select(
+      'users.*',
+      'roles.code_role',
+      'roles.nom_role',
+      'roles.description as role_description'
+    )
+    .from('users')
+    .leftJoin('roles', 'users.id_role', 'roles.id_role')
+    .where('users.id_user', userId);
+    
+  if (!includeInactive) {
+    query.where('users.is_active', true);
+  }
+  
+  const result = await query.first();
+  
+  return result;
 }
 
 

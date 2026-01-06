@@ -35,5 +35,43 @@ export const createTiersSchema = Joi.object({
   secteur_activite: Joi.string().max(100).allow('').optional(),
   categorie: Joi.string().valid('prospect', 'client', 'fournisseur', 'partenaire').optional(),
   devise_preferee: Joi.string().max(3).default('MGA').optional(),
-  // Ignorez 'reference' qui n'existe pas dans la table
-}).unknown(true); // Permet des champs non définis (comme 'reference')
+}).unknown(true); // Permet des champs non définis
+
+// ✅ AJOUTER CE SCHÉMA POUR LA MISE À JOUR
+export const updateTiersSchema = Joi.object({
+  nom: Joi.string().min(2).max(255).optional().messages({
+    'string.min': 'Le nom doit contenir au moins 2 caractères',
+    'string.max': 'Le nom ne peut pas dépasser 255 caractères'
+  }),
+  type_tiers: Joi.string().valid('client', 'fournisseur').optional().messages({
+    'any.only': 'Le type de tiers doit être "client" ou "fournisseur"'
+  }),
+  numero: Joi.string().max(50).allow('').optional().messages({
+    'string.max': 'Le numéro ne peut pas dépasser 50 caractères'
+  }),
+  siret: Joi.string().max(14).allow('').optional().messages({
+    'string.max': 'Le SIRET ne peut pas dépasser 14 caractères'
+  }),
+  adresse: Joi.string().max(500).allow('').optional().messages({
+    'string.max': 'L\'adresse ne peut pas dépasser 500 caractères'
+  }),
+  email: Joi.string()
+    .email({ tlds: { allow: false } })
+    .allow('')
+    .optional()
+    .messages({
+      'string.email': 'L\'email doit être une adresse email valide'
+    }),
+  telephone: Joi.string().max(20).allow('').optional().messages({
+    'string.max': 'Le téléphone ne peut pas dépasser 20 caractères'
+  }),
+  // Nouvelles colonnes
+  forme_juridique: Joi.string().max(100).allow('').optional(),
+  secteur_activite: Joi.string().max(100).allow('').optional(),
+  categorie: Joi.string().valid('prospect', 'client', 'fournisseur', 'partenaire').optional(),
+  devise_preferee: Joi.string().max(3).optional(),
+  is_active: Joi.boolean().optional(),
+  notes: Joi.string().allow('').optional(),
+  conditions_paiement: Joi.string().max(100).allow('').optional(),
+  delai_paiement: Joi.number().integer().min(0).optional()
+}).unknown(true); // Permet des champs non définis

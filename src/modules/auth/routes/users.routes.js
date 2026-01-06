@@ -1,7 +1,7 @@
 // backend/src/modules/auth/routes/users.routes.js
 import express from 'express';
 import { UserController } from '../controllers/UserController.js';
-import { auth } from '../../../core/middleware/auth.js'; // ← CHANGER ICI
+import { auth } from '../../../core/middleware/auth.js'; 
 import { authorize } from '../middleware/authorize.js';
 
 const router = express.Router();
