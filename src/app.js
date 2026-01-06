@@ -37,6 +37,7 @@ const app = express();
 
 // Middleware CORS - configuration pour Vercel
 const allowedOrigins = [
+  'https://omniservesexpert-frontend.vercel.app',
   'https://omniserves-experts-frontend.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
