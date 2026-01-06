@@ -6,6 +6,7 @@ export class UserService {
     this.userRepository = new UserRepository();
   }
 
+
   async getAllUsers() {
     return await this.userRepository.findAllWithRoles();
   }
@@ -80,7 +81,7 @@ export class UserService {
   }
 
   async deactivateUser(id) {
-    const existingUser = await this.userRepository.findByIdWithRole(id);
+    const existingUser = await this.userRepository.findByIdWithRole(id, false);
     if (!existingUser) {
       throw new Error('Utilisateur non trouvé');
     }
@@ -89,13 +90,13 @@ export class UserService {
   }
 
   async activateUser(id) {
-    const existingUser = await this.userRepository.findByIdWithRole(id);
-    if (!existingUser) {
-      throw new Error('Utilisateur non trouvé');
-    }
-
-    return await this.userRepository.update(id, { is_active: true });
+  const existingUser = await this.userRepository.findByIdWithRole(id, true);
+  if (!existingUser) {
+    throw new Error('Utilisateur non trouvé');
   }
+
+  return await this.userRepository.update(id, { is_active: true });
+}
 
   // Méthode utilitaire pour obtenir l'ID d'un rôle
   async getRoleId(roleCode) {

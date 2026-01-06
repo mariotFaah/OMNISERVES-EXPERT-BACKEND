@@ -40,7 +40,7 @@ async findByEmail(email) {
   }
 
 
-async findByIdWithRole(userId) {
+/*async findByIdWithRole(userId) {
   return this.db
     .select(
       'users.*',
@@ -53,7 +53,27 @@ async findByIdWithRole(userId) {
     .where('users.id_user', userId)
     .where('users.is_active', true)
     .first();
+}*/
+
+async findByIdWithRole(userId, includeInactive = false) {
+  const query = this.db
+    .select(
+      'users.*',
+      'roles.code_role',
+      'roles.nom_role',
+      'roles.description as role_description'
+    )
+    .from('users')
+    .leftJoin('roles', 'users.id_role', 'roles.id_role')
+    .where('users.id_user', userId);
+    
+  if (!includeInactive) {
+    query.where('users.is_active', true);
+  }
+  
+  return query.first();
 }
+
 
   async hasPermission(userId, module, action) {
     const result = await this.db
