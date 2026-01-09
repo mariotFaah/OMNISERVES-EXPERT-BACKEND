@@ -277,8 +277,14 @@ export class FacturationService {
       }
     }
 
+    const numero_complet = await this.numeroFactureService.genererNumero(
+      factureData.type_facture || 'facture',
+      new Date(factureData.date || new Date())
+    );
+
     const facture = {
       numero_facture,
+       numero_complet: numero_complet,
       date: factureData.date || new Date().toISOString().split('T')[0],
       type_facture: factureData.type_facture,
       id_tiers: factureData.id_tiers,

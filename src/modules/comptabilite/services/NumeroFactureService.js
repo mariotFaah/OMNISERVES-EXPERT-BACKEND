@@ -1,4 +1,4 @@
-// src/modules/comptabilite/services/NumeroFactureService.js
+// src/modules/comptabilite/services/NumeroFactureService.js - VERSION NUMERO_COMPLET
 import { db } from '../../../core/database/connection.js';
 
 export class NumeroFactureService {
@@ -16,11 +16,14 @@ export class NumeroFactureService {
       const annee = date.getFullYear();
       const prefixe = this.prefixes[type] || 'DOC';
       
-      // Rechercher la dernière séquence pour ce type et cette année
+      console.log(`🔢 Début génération numéro: type=${type}, année=${annee}, préfixe=${prefixe}`);
+      
+      // CORRECTION: Rechercher dans la colonne numero_complet
       const result = await db('factures')
         .where('type_facture', type)
         .whereRaw('YEAR(date) = ?', [annee])
-        .max('numero_facture as dernier_numero')
+        .whereNotNull('numero_complet')
+        .max('numero_complet as dernier_numero')
         .first();
       
       let sequence = 1;
@@ -30,37 +33,40 @@ export class NumeroFactureService {
         const match = result.dernier_numero.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
         if (match) {
           sequence = parseInt(match[1]) + 1;
+          console.log(`📈 Séquence trouvée: ${match[1]}, nouvelle: ${sequence}`);
         } else {
-          // Si ancien format, chercher la plus haute séquence
+          // Si format différent, chercher toutes les séquences
           const allNumbers = await db('factures')
             .where('type_facture', type)
             .whereRaw('YEAR(date) = ?', [annee])
-            .select('numero_facture');
+            .whereNotNull('numero_complet')
+            .select('numero_complet');
           
           const sequences = allNumbers
             .map(num => {
-              const m = num.numero_facture.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
+              const m = num.numero_complet.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
               return m ? parseInt(m[1]) : 0;
             })
             .filter(seq => seq > 0);
           
           sequence = sequences.length > 0 ? Math.max(...sequences) + 1 : 1;
+          console.log(`🔍 ${sequences.length} séquences trouvées, max: ${Math.max(...sequences) || 0}`);
         }
+      } else {
+        console.log(`🆕 Première facture de type ${type} en ${annee}`);
       }
       
       // Formater la séquence
       const sequenceFormatee = sequence.toString().padStart(3, '0');
-      
-      // Construire le numéro international
       const numeroInternational = `${prefixe}/${annee}/${sequenceFormatee}`;
       
-      console.log(`🔢 Numéro ${type} généré: ${numeroInternational}`);
+      console.log(`✅ Numéro final généré: ${numeroInternational}`);
       
       return numeroInternational;
       
     } catch (error) {
       console.error('❌ Erreur génération numéro facture:', error);
-      throw new Error('Impossible de générer le numéro de facture');
+      throw new Error(`Impossible de générer le numéro de facture: ${error.message}`);
     }
   }
   
@@ -109,6 +115,39 @@ export class NumeroFactureService {
     const typeLisible = types[composants.prefixe] || composants.prefixe;
     
     return `${typeLisible} ${composants.annee}-${composants.sequence.toString().padStart(3, '0')}`;
+  }
+
+  // NOUVELLE MÉTHODE: Migrer les anciennes factures
+  async migrerAnciennesFactures() {
+    try {
+      console.log('🔄 Début migration des anciennes factures...');
+      
+      const factures = await db('factures')
+        .whereNull('numero_complet')
+        .select('*');
+      
+      console.log(`📊 ${factures.length} factures à migrer`);
+      
+      for (const facture of factures) {
+        const prefixe = this.prefixes[facture.type_facture] || 'DOC';
+        const annee = new Date(facture.date).getFullYear();
+        
+        // Pour les anciennes factures, on garde leur numéro_facture comme séquence
+        const sequence = facture.numero_facture;
+        const numeroComplet = `${prefixe}/${annee}/${sequence.toString().padStart(3, '0')}`;
+        
+        await db('factures')
+          .where('numero_facture', facture.numero_facture)
+          .update({ numero_complet: numeroComplet });
+        
+        console.log(`✅ Migré: ${facture.numero_facture} → ${numeroComplet}`);
+      }
+      
+      console.log('🎉 Migration terminée');
+      
+    } catch (error) {
+      console.error('❌ Erreur migration:', error);
+    }
   }
 }
 
