@@ -10,6 +10,7 @@ async findAll() {
       .join('tiers as t', 'f.id_tiers', 't.id_tiers')
       .select(
         'f.numero_facture',
+        'f.numero_complet',
         'f.date',
         'f.type_facture',
         'f.echeance',
