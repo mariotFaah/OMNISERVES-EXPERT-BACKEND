@@ -1,0 +1,1 @@
+{"success":false,"message":"Données de requête invalides","errors":[{"field":"email","message":"L'email est obligatoire"},{"field":"password","message":"Le mot de passe est obligatoire"}]}

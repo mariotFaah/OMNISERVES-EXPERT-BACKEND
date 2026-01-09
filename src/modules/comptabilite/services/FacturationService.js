@@ -221,11 +221,8 @@ export class FacturationService {
       }
     }
 
-    /* Générer le numéro de facture
-    const numero_facture = await this.factureRepository.getNextNumeroInternational(
-      factureData.type_facture || 'facture'
-    );*/
-    const numero_facture = await this.numeroFactureService.genererNumero(
+    // GÉNÉRER LE NUMÉRO COMPLET UNE SEULE FOIS
+    const numero_complet = await this.numeroFactureService.genererNumero(
       factureData.type_facture || 'facture',
       new Date(factureData.date || new Date())
     );
@@ -277,14 +274,9 @@ export class FacturationService {
       }
     }
 
-    const numero_complet = await this.numeroFactureService.genererNumero(
-      factureData.type_facture || 'facture',
-      new Date(factureData.date || new Date())
-    );
-
     const facture = {
-      numero_facture,
-       numero_complet: numero_complet,
+      // numero_facture sera généré automatiquement par MySQL (auto_increment)
+      numero_complet: numero_complet,  // ✅ Numéro international
       date: factureData.date || new Date().toISOString().split('T')[0],
       type_facture: factureData.type_facture,
       id_tiers: factureData.id_tiers,
@@ -301,10 +293,13 @@ export class FacturationService {
       ...configPaiement
     };
 
-    // Créer la facture
+    // Créer la facture (numero_facture sera auto-généré par MySQL)
     const nouvelleFacture = await this.factureRepository.create(facture);
+    
+    // Récupérer le numero_facture auto-généré par MySQL
+    const numero_facture = nouvelleFacture.numero_facture;
 
-    // Traiter les lignes de facture
+    // Traiter les lignes de facture avec le vrai numero_facture
     const lignesAvecCalculs = await this.processLignesFacture(
       numero_facture, 
       factureData.lignes || [],
