@@ -11,64 +11,71 @@ export class NumeroFactureService {
     };
   }
   
-  async genererNumero(type = 'facture', date = new Date()) {
-    try {
-      const annee = date.getFullYear();
-      const prefixe = this.prefixes[type] || 'DOC';
-      
-      console.log(`🔢 Début génération numéro: type=${type}, année=${annee}, préfixe=${prefixe}`);
-      
-      // CORRECTION: Rechercher dans la colonne numero_complet
-      const result = await db('factures')
-        .where('type_facture', type)
-        .whereRaw('YEAR(date) = ?', [annee])
-        .whereNotNull('numero_complet')
-        .max('numero_complet as dernier_numero')
-        .first();
-      
-      let sequence = 1;
-      
-      if (result.dernier_numero) {
-        // Vérifier si c'est déjà un format international
-        const match = result.dernier_numero.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
-        if (match) {
-          sequence = parseInt(match[1]) + 1;
-          console.log(`📈 Séquence trouvée: ${match[1]}, nouvelle: ${sequence}`);
-        } else {
-          // Si format différent, chercher toutes les séquences
-          const allNumbers = await db('factures')
-            .where('type_facture', type)
-            .whereRaw('YEAR(date) = ?', [annee])
-            .whereNotNull('numero_complet')
-            .select('numero_complet');
-          
-          const sequences = allNumbers
-            .map(num => {
-              const m = num.numero_complet.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
-              return m ? parseInt(m[1]) : 0;
-            })
-            .filter(seq => seq > 0);
-          
-          sequence = sequences.length > 0 ? Math.max(...sequences) + 1 : 1;
-          console.log(`🔍 ${sequences.length} séquences trouvées, max: ${Math.max(...sequences) || 0}`);
-        }
+  // Dans NumeroFactureService.js
+async genererNumero(type = 'facture', date = new Date()) {
+  try {
+    const annee = date.getFullYear();
+    const prefixe = this.prefixes[type] || 'DOC';
+    
+    console.log(`🔢 Début génération numéro: type=${type}, année=${annee}, préfixe=${prefixe}`);
+    console.log(`📅 Date fournie: ${date}, Année extraite: ${annee}`);
+    
+    // CORRECTION: Rechercher dans la colonne numero_complet
+    const result = await db('factures')
+      .where('type_facture', type)
+      .whereRaw('YEAR(date) = ?', [annee])
+      .whereNotNull('numero_complet')
+      .max('numero_complet as dernier_numero')
+      .first();
+    
+    console.log(`📊 Résultat requête:`, result);
+    
+    let sequence = 1;
+    
+    if (result && result.dernier_numero) {
+      console.log(`📈 Dernier numéro trouvé: ${result.dernier_numero}`);
+      // Vérifier si c'est déjà un format international
+      const match = result.dernier_numero.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
+      if (match) {
+        sequence = parseInt(match[1]) + 1;
+        console.log(`🔢 Séquence trouvée: ${match[1]}, nouvelle: ${sequence}`);
       } else {
-        console.log(`🆕 Première facture de type ${type} en ${annee}`);
+        // Si format différent, chercher toutes les séquences
+        const allNumbers = await db('factures')
+          .where('type_facture', type)
+          .whereRaw('YEAR(date) = ?', [annee])
+          .whereNotNull('numero_complet')
+          .select('numero_complet');
+        
+        console.log(`🔍 ${allNumbers.length} numéros trouvés pour ${type}/${annee}`);
+        
+        const sequences = allNumbers
+          .map(num => {
+            const m = num.numero_complet.match(new RegExp(`^${prefixe}/${annee}/(\\d+)$`));
+            return m ? parseInt(m[1]) : 0;
+          })
+          .filter(seq => seq > 0);
+        
+        sequence = sequences.length > 0 ? Math.max(...sequences) + 1 : 1;
+        console.log(`📊 ${sequences.length} séquences valides, max: ${Math.max(...sequences) || 0}`);
       }
-      
-      // Formater la séquence
-      const sequenceFormatee = sequence.toString().padStart(3, '0');
-      const numeroInternational = `${prefixe}/${annee}/${sequenceFormatee}`;
-      
-      console.log(`✅ Numéro final généré: ${numeroInternational}`);
-      
-      return numeroInternational;
-      
-    } catch (error) {
-      console.error('❌ Erreur génération numéro facture:', error);
-      throw new Error(`Impossible de générer le numéro de facture: ${error.message}`);
+    } else {
+      console.log(`🆕 Première facture de type ${type} en ${annee} ou pas de numero_complet`);
     }
+    
+    // Formater la séquence
+    const sequenceFormatee = sequence.toString().padStart(3, '0');
+    const numeroInternational = `${prefixe}/${annee}/${sequenceFormatee}`;
+    
+    console.log(`✅ Numéro final généré: ${numeroInternational}`);
+    
+    return numeroInternational;
+    
+  } catch (error) {
+    console.error('❌ Erreur génération numéro facture:', error);
+    throw new Error(`Impossible de générer le numéro de facture: ${error.message}`);
   }
+}
   
   // Vérifier si un numéro est valide
   validerFormat(numero) {
