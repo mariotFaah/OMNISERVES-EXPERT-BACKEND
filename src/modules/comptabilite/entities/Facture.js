@@ -45,4 +45,45 @@ export class Facture {
       this.statut_paiement = 'non_paye';
     }
   }
+
+  // Dans Facture.js - ajoutez ces méthodes
+
+// Méthode pour extraire les parties du numéro
+extraireComposantsNumero() {
+  if (!this.numero_facture) return null;
+  
+  const match = this.numero_facture.match(/^([A-Z]+)\/(\d+)\/(\d+)$/);
+  
+  if (match) {
+    return {
+      prefixe: match[1], // INV, PRO, AVO
+      annee: match[2],   // 2024
+      sequence: match[3] // 001
+    };
+  }
+  
+  // Si ce n'est pas un format international, retourner le numéro tel quel
+  return {
+    prefixe: 'NUM',
+    annee: new Date(this.date).getFullYear().toString(),
+    sequence: this.numero_facture.toString()
+  };
+}
+
+// Méthode pour formater l'affichage
+formatNumeroFacture() {
+  const composants = this.extraireComposantsNumero();
+  if (!composants) return this.numero_facture;
+  
+  switch(composants.prefixe) {
+    case 'INV':
+      return `Facture ${composants.annee}-${composants.sequence}`;
+    case 'PRO':
+      return `Proforma ${composants.annee}-${composants.sequence}`;
+    case 'AVO':
+      return `Avoir ${composants.annee}-${composants.sequence}`;
+    default:
+      return `${composants.prefixe} ${composants.annee}-${composants.sequence}`;
+  }
+}
 }

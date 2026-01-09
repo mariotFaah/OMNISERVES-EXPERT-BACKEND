@@ -145,6 +145,68 @@ async create(factureData) {
   }
 }
 
+// Dans FactureRepository.js - ajoutez cette méthode
+
+// Récupérer le prochain numéro de facture avec format international
+async getNextNumeroInternational(type_facture = 'facture') {
+  try {
+    const annee = new Date().getFullYear();
+    
+    // Déterminer le préfixe selon le type
+    let prefixe;
+    switch(type_facture) {
+      case 'proforma':
+        prefixe = 'PRO';
+        break;
+      case 'avoir':
+        prefixe = 'AVO';
+        break;
+      case 'facture':
+      default:
+        prefixe = 'INV'; // Invoice = Facture
+        break;
+    }
+    
+    // Chercher la dernière facture de ce type cette année
+    const result = await db('factures')
+      .where('type_facture', type_facture)
+      .whereRaw('YEAR(date) = ?', [annee])
+      .max('numero_facture as max_numero')
+      .first();
+    
+    let sequence = 1;
+    
+    if (result.max_numero) {
+      // Extraire la séquence du numéro existant (format: INV/2024/001)
+      const match = result.max_numero.match(/\/(\d+)$/);
+      if (match) {
+        sequence = parseInt(match[1]) + 1;
+      }
+    }
+    
+    // Formater la séquence sur 3 chiffres (001, 002, etc.)
+    const sequenceFormatee = sequence.toString().padStart(3, '0');
+    
+    // Numéro international: TYPE/ANNÉE/SEQUENCE
+    const numeroInternational = `${prefixe}/${annee}/${sequenceFormatee}`;
+    
+    console.log(`📄 Numéro ${type_facture} généré: ${numeroInternational}`);
+    
+    return numeroInternational;
+    
+  } catch (error) {
+    console.error('❌ Erreur génération numéro international:', error);
+    // Fallback: numéro simple
+    const simpleResult = await db('factures')
+      .max('numero_facture as max_numero')
+      .first();
+    
+    const fallbackNum = (simpleResult.max_numero || 0) + 1;
+    console.log(`⚠️ Fallback numéro: ${fallbackNum}`);
+    return fallbackNum.toString();
+  }
+}
+
   // Mettre à jour une facture
   async update(numeroFacture, factureData) {
   try {

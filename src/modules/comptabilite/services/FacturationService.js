@@ -6,6 +6,7 @@ import { CalculService } from './CalculService.js';
 import { ArticleService } from './ArticleService.js';
 import { PaiementRepository } from '../repositories/PaiementRepository.js';
 import { JournalService } from './JournalService.js'; 
+import { NumeroFactureService } from './NumeroFactureService.js';
 
 export class FacturationService {
   constructor() {
@@ -17,6 +18,7 @@ export class FacturationService {
     this.articleService = new ArticleService();
     this.paiementRepository = new PaiementRepository(); 
     this.journalService = new JournalService(); 
+    this.numeroFactureService = new NumeroFactureService();
   }
 
   async verifierStockAvantCreation(factureData) {
@@ -219,8 +221,14 @@ export class FacturationService {
       }
     }
 
-    // Générer le numéro de facture
-    const numero_facture = await this.factureRepository.getNextNumero();
+    /* Générer le numéro de facture
+    const numero_facture = await this.factureRepository.getNextNumeroInternational(
+      factureData.type_facture || 'facture'
+    );*/
+    const numero_facture = await this.numeroFactureService.genererNumero(
+      factureData.type_facture || 'facture',
+      new Date(factureData.date || new Date())
+    );
 
     // NOUVEAUX CHAMPS PAIEMENT FLEXIBLE
     const typePaiement = factureData.type_paiement || 'comptant';
